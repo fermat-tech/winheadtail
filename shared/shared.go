@@ -2,6 +2,9 @@
 package shared
 
 import (
+	"bufio"
+	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -17,6 +20,20 @@ import (
 func ProgName() string {
 	name := filepath.Base(os.Args[0])
 	return strings.TrimSuffix(name, filepath.Ext(name))
+}
+
+// ---- version ----
+
+// PrintVersion writes the banner this tool family shares, itself modeled on
+// `bash --version`. Callers pass their own build-stamped version string.
+func PrintVersion(version string) {
+	fmt.Fprintf(Stdout, `%s, version %s
+Copyright (c) 2026 fermat-tech
+License: MIT <https://opensource.org/licenses/MIT>
+
+This is free software; you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+`, ProgName(), version)
 }
 
 // ---- output writers ----
@@ -70,6 +87,42 @@ func Col(code, s string) string {
 		return s
 	}
 	return code + s + ColorReset
+}
+
+// ---- line scanning ----
+
+// ScanLinesKeepEnding is bufio.ScanLines except that each token keeps its own
+// terminator, and the terminator is only ever the '\n'.
+//
+// head and tail sit in the middle of byte streams, so what they write has to be
+// what they read. bufio.ScanLines drops the terminator and strips a preceding
+// '\r', which leaves a caller two ways to corrupt data: re-adding a '\n' invents
+// a byte for a final line that never had one, and dropping the '\r' rewrites
+// every CRLF file as LF. Splitting on '\n' alone and handing the line back
+// intact avoids both.
+func ScanLinesKeepEnding(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if atEOF && len(data) == 0 {
+		return 0, nil, nil
+	}
+	if i := bytes.IndexByte(data, '\n'); i >= 0 {
+		return i + 1, data[:i+1], nil
+	}
+	if atEOF {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
+}
+
+// NewLineScanner returns a scanner over r yielding whole lines with their
+// terminators, sized to cope with long lines.
+//
+// As with any bufio.Scanner, the slice from Bytes() is only valid until the
+// next Scan; a caller that holds lines must copy them.
+func NewLineScanner(r io.Reader) *bufio.Scanner {
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+	sc.Split(ScanLinesKeepEnding)
+	return sc
 }
 
 // ---- glob expansion ----
