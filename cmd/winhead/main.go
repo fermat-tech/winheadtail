@@ -13,10 +13,10 @@ import (
 
 var progName = shared.ProgName()
 
-// version is the release tag (e.g. "v1.1.0"). Overridden at build time via
-// -ldflags "-X main.version=vX.Y.Z"; "dev" for a plain `go build` with no tag
-// supplied.
-var version = "dev"
+// version is what --version reports. It is empty here so that the release
+// builds can stamp the tag in with -ldflags "-X main.version=vX.Y.Z";
+// otherwise shared.PrintVersion resolves it with shared.BuildVersion.
+var version = ""
 
 // ---- options ----
 

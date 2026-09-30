@@ -25,8 +25,12 @@ func ProgName() string {
 // ---- version ----
 
 // PrintVersion writes the banner this tool family shares, itself modeled on
-// `bash --version`. Callers pass their own build-stamped version string.
+// `bash --version`. Callers pass their own build-stamped version string, or
+// "" to have it resolved by BuildVersion.
 func PrintVersion(version string) {
+	if version == "" {
+		version = BuildVersion()
+	}
 	fmt.Fprintf(Stdout, `%s, version %s
 Copyright (c) 2026 fermat-tech
 License: MIT <https://opensource.org/licenses/MIT>
